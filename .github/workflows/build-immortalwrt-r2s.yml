@@ -47,8 +47,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '.github/workflows/**'
 
 env:
   TZ: Asia/Shanghai
