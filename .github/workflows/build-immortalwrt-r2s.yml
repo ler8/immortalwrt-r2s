@@ -4,7 +4,7 @@
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
 #
-# ImmortalWrt CI action
+# ImmortalWrt CI action for NanoPi R2S
 
 name: Build ImmortalWrt for R2S
 
@@ -23,28 +23,14 @@ on:
       target:
         description: 'Target platform'
         required: true
-        default: 'x86_64'
+        default: 'aarch64_generic'
         type: choice
         options:
           - x86_64
           - aarch64_generic
           - aarch64_cortex-a53
           - aarch64_cortex-a72
-          - arm_cortex-a7
-          - arm_cortex-a7_neon-vfpv4
-          - arm_cortex-a8_vfpv3
-          - arm_cortex-a9
-          - arm_cortex-a9_vfpv3-d16
-          - arm_cortex-a9_neon
-          - arm_cortex-a15_neon-vfpv4
-          - mipsel_24kc
-          - mips_24kc
-          - ramips_mt7620
           - ramips_mt7621
-          - ramips_mt76x8
-          - mediatek_mt7622
-          - ipq40xx_generic
-          - ipq806x_generic
       profile:
         description: 'Target profile (optional)'
         required: false
@@ -108,7 +94,6 @@ jobs:
           sudo timedatectl set-timezone "$TZ"
 
       - name: Clone source code
-        working-directory: main
         run: |
           set -x
           git clone --single-branch --depth 1 -b ${{ github.event.inputs.branch }} https://github.com/immortalwrt/immortalwrt.git openwrt
@@ -119,24 +104,13 @@ jobs:
           echo "COMMIT_MSG=$(git log -1 --pretty=format:'%s')" >> $GITHUB_ENV
 
       - name: Load custom feeds
+        working-directory: openwrt
         run: |
-          # Add SSRP feeds to feeds.conf.default
-          echo 'src-git helloworld https://github.com/fw876/helloworld.git' >> openwrt/feeds.conf.default
-          
-          # Create custom feeds configuration
-          cat > openwrt/feeds.conf.custom << 'EOF'
-          src-git packages https://github.com/immortalwrt/packages.git;openwrt-24.10
-          src-git luci https://github.com/immortalwrt/luci.git;openwrt-24.10
-          src-git routing https://github.com/immortalwrt/routing.git;openwrt-24.10
-          src-git telephony https://github.com/immortalwrt/telephony.git;openwrt-24.10
-          src-git helloworld https://github.com/fw876/helloworld.git
-          EOF
-          
-          # Replace branch name in feeds.conf.custom based on input
-          sed -i "s|openwrt-24.10|${{ github.event.inputs.branch }}|g" openwrt/feeds.conf.custom
+          # Add helloworld (ssr-plus) feeds to feeds.conf.default
+          echo 'src-git helloworld https://github.com/fw876/helloworld.git' >> feeds.conf.default
 
       - name: Update feeds & Install feeds
-        working-directory: main/openwrt
+        working-directory: openwrt
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
@@ -144,48 +118,41 @@ jobs:
       - name: Load custom configuration
         run: |
           # Copy custom configuration file
-          cp main/configs/config.seed main/openwrt/.config
-          
+          cp main/configs/config.seed openwrt/.config
+
           # Modify configuration based on target
-          sed -i "s|CONFIG_TARGET_x86_64=y|# CONFIG_TARGET_x86_64 is not set|g" main/openwrt/.config
-          sed -i "s|# CONFIG_TARGET_${{ github.event.inputs.target }} is not set|CONFIG_TARGET_${{ github.event.inputs.target }}=y|g" main/openwrt/.config
-          
-          # NanoPi R2S specific configuration
           if [ "${{ github.event.inputs.target }}" = "aarch64_generic" ]; then
             echo ">> 应用 NanoPi R2S 专用配置..."
-            
+
             # 设置 R2S 为目标设备
-            sed -i 's|CONFIG_TARGET_PROFILE=""|CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"|g' main/openwrt/.config
-            sed -i 's|CONFIG_TARGET_BOARD="x86"|CONFIG_TARGET_BOARD="rockchip"|g' main/openwrt/.config
-            sed -i 's|CONFIG_TARGET_SUBTARGET="64"|CONFIG_TARGET_SUBTARGET="armv8"|g' main/openwrt/.config
-            sed -i 's|CONFIG_TARGET_ARCH_PACKAGES="x86_64"|CONFIG_TARGET_ARCH_PACKAGES="aarch64_generic"|g' main/openwrt/.config
-            sed -i 's|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe"|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -mcpu=cortex-a53"|g' main/openwrt/.config
+            sed -i 's|CONFIG_TARGET_PROFILE=""|CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"|g' openwrt/.config
+            sed -i 's|CONFIG_TARGET_BOARD="x86"|CONFIG_TARGET_BOARD="rockchip"|g' openwrt/.config
+            sed -i 's|CONFIG_TARGET_SUBTARGET="64"|CONFIG_TARGET_SUBTARGET="armv8"|g' openwrt/.config
+            sed -i 's|CONFIG_TARGET_ARCH_PACKAGES="x86_64"|CONFIG_TARGET_ARCH_PACKAGES="aarch64_generic"|g' openwrt/.config
+            sed -i 's|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe"|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -mcpu=cortex-a53"|g' openwrt/.config
           fi
-          
+
           # Enable SSRP packages
-          cat >> main/openwrt/.config << 'EOF'
-          
-          # SSRP Configuration
-          CONFIG_PACKAGE_luci-app-ssr-plus=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Chinese=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_NONE_Client=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Client=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_NONE_Server=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Server=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Client=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Server=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Simple_obfs=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Simple_obfs_server=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Hysteria=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Trojan=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_NaiveProxy=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Kcptun=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadow_TLS=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_SingBox=y
-          CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_V2ray_Plugin=y
-          CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y
-          EOF
+          cat >> openwrt/.config << 'EOF'
+
+# SSRP Configuration
+CONFIG_PACKAGE_luci-app-ssr-plus=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Chinese=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Client=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Server=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Client=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Server=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Simple_obfs=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Hysteria=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Trojan=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_NaiveProxy=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Kcptun=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadow_TLS=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_SingBox=y
+CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_V2ray_Plugin=y
+CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y
+EOF
 
       - name: Apply NanoPi R2S customizations
         run: |
@@ -193,11 +160,11 @@ jobs:
           if [ "${{ github.event.inputs.target }}" = "aarch64_generic" ]; then
             echo ">> 应用 NanoPi R2S LAN/WAN 对调和 IP 修改..."
             chmod +x main/scripts/customize-r2s.sh
-            bash main/scripts/customize-r2s.sh main/openwrt
+            bash main/scripts/customize-r2s.sh openwrt
           fi
 
       - name: Download package
-        working-directory: main/openwrt
+        working-directory: openwrt
         run: |
           make defconfig
           make download -j8
@@ -205,7 +172,7 @@ jobs:
           find dl -size -1024c -exec rm -f {} \;
 
       - name: Compile firmware
-        working-directory: main/openwrt
+        working-directory: openwrt
         run: |
           echo -e "$(nproc) thread compile"
           make -j$(nproc) || make -j1 || make -j1 V=s
@@ -214,41 +181,38 @@ jobs:
       - name: Prepare artifacts
         if: env.compile_status == 'success' && !cancelled()
         run: |
-          mkdir -p main/artifacts
-          find main/openwrt/bin/targets/ -name "*.bin" -o -name "*.img.gz" -o -name "*.factory" -o -name "*.img" | xargs cp -f main/artifacts/
-          find main/openwrt/bin/targets/ -name "*.manifest" | xargs cp -f main/artifacts/
-          find main/openwrt/bin/packages/ -name "*.ipk" -path "*/helloworld/*" | xargs cp -f main/artifacts/ 2>/dev/null || true
-          cp main/openwrt/.config main/artifacts/config.seed
-          cp main/openwrt/build_dir/target-*/linux-*/linux-*/.config main/artifacts/kernel_config 2>/dev/null || true
+          mkdir -p artifacts
+          find openwrt/bin/targets/ -name "*.bin" -o -name "*.img.gz" -o -name "*.factory" -o -name "*.img" | xargs cp -f artifacts/
+          find openwrt/bin/targets/ -name "*.manifest" | xargs cp -f artifacts/
+          cp openwrt/.config artifacts/config.seed
 
       - name: Generate release info
         if: env.compile_status == 'success' && !cancelled()
         run: |
-          cat > main/INFO.md << EOF
+          cat > INFO.md << EOF
           ## ImmortalWrt 固件编译完成
-          
+
           ### 编译信息
           - **源码分支**: ${{ github.event.inputs.branch }}
           - **目标平台**: ${{ github.event.inputs.target }}
           - **目标设备**: ${{ github.event.inputs.profile || 'Default' }}
           - **代理插件模式**: ${{ github.event.inputs.proxy_mode }}
-          
+
           ### 提交信息
           - **作者**: ${{ env.COMMIT_AUTHOR }}
           - **日期**: ${{ env.COMMIT_DATE }}
           - **Hash**: ${{ env.COMMIT_HASH }}
           - **说明**: ${{ env.COMMIT_MSG }}
-          
+
           ### 插件说明
           - 已集成 luci-app-ssr-plus 插件
           - 支持 Shadowsocks/ShadowsocksR/Xray/Trojan/Hysteria/NaiveProxy 等协议
-          
+
           ### 注意事项
-          - 固件名称带 `ext4` 字样的为 ext4 文件系统格式
-          - 固件名称带 `squashfs` 字样的为 squashfs 文件系统格式
-          - 带 `sysupgrade` 字样的固件用于升级已有固件
-          - 带 `factory` 字样的固件用于从原厂固件刷入
-          - x86/x64 设备请使用 `img` 或 `ext4`/`squashfs` 镜像文件
+          - 固件名称带 ext4 字样的为 ext4 文件系统格式
+          - 固件名称带 squashfs 字样的为 squashfs 文件系统格式
+          - 带 sysupgrade 字样的固件用于升级已有固件
+          - x86/x64 设备请使用 img 或 ext4/squashfs 镜像文件
           EOF
 
       - name: Release firmware
@@ -256,8 +220,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: immortalwrt-${{ github.event.inputs.branch }}-${{ github.event.inputs.target }}-$(date +%Y%m%d%H%M)
-          body_path: main/INFO.md
-          files: main/artifacts/*
+          body_path: INFO.md
+          files: artifacts/*
           draft: false
           prerelease: false
         env:
