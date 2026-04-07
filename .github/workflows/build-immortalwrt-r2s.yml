@@ -44,6 +44,11 @@ on:
         options:
           - full
           - lite
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
 
 env:
   TZ: Asia/Shanghai
@@ -64,10 +69,18 @@ jobs:
 
       - name: Show variables
         run: |
-          echo "Branch: ${{ github.event.inputs.branch }}"
-          echo "Target: ${{ github.event.inputs.target }}"
-          echo "Profile: ${{ github.event.inputs.profile }}"
-          echo "Proxy Mode: ${{ github.event.inputs.proxy_mode }}"
+          BRANCH="${{ github.event.inputs.branch || 'openwrt-24.10' }}"
+          TARGET="${{ github.event.inputs.target || 'aarch64_generic' }}"
+          PROFILE="${{ github.event.inputs.profile || '' }}"
+          PROXY_MODE="${{ github.event.inputs.proxy_mode || 'full' }}"
+          echo "Branch: $BRANCH"
+          echo "Target: $TARGET"
+          echo "Profile: $PROFILE"
+          echo "Proxy Mode: $PROXY_MODE"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "TARGET=$TARGET" >> $GITHUB_ENV
+          echo "PROFILE=$PROFILE" >> $GITHUB_ENV
+          echo "PROXY_MODE=$PROXY_MODE" >> $GITHUB_ENV
 
       - name: Free disk space
         run: |
@@ -96,7 +109,7 @@ jobs:
       - name: Clone source code
         run: |
           set -x
-          git clone --single-branch --depth 1 -b ${{ github.event.inputs.branch }} https://github.com/immortalwrt/immortalwrt.git openwrt
+          git clone --single-branch --depth 1 -b $BRANCH https://github.com/immortalwrt/immortalwrt.git openwrt
           cd openwrt
           echo "COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> $GITHUB_ENV
           echo "COMMIT_DATE=$(git log -1 --pretty=format:'%ci')" >> $GITHUB_ENV
@@ -121,7 +134,7 @@ jobs:
           cp main/configs/config.seed openwrt/.config
 
           # Modify configuration based on target
-          if [ "${{ github.event.inputs.target }}" = "aarch64_generic" ]; then
+          if [ "$TARGET" = "aarch64_generic" ]; then
             echo ">> 应用 NanoPi R2S 专用配置..."
 
             # 设置 R2S 为目标设备
@@ -157,7 +170,7 @@ EOF
       - name: Apply NanoPi R2S customizations
         run: |
           # 如果是 R2S 平台，应用自定义配置
-          if [ "${{ github.event.inputs.target }}" = "aarch64_generic" ]; then
+          if [ "$TARGET" = "aarch64_generic" ]; then
             echo ">> 应用 NanoPi R2S LAN/WAN 对调和 IP 修改..."
             chmod +x main/scripts/customize-r2s.sh
             bash main/scripts/customize-r2s.sh openwrt
@@ -193,10 +206,10 @@ EOF
           ## ImmortalWrt 固件编译完成
 
           ### 编译信息
-          - **源码分支**: ${{ github.event.inputs.branch }}
-          - **目标平台**: ${{ github.event.inputs.target }}
-          - **目标设备**: ${{ github.event.inputs.profile || 'Default' }}
-          - **代理插件模式**: ${{ github.event.inputs.proxy_mode }}
+          - **源码分支**: $BRANCH
+          - **目标平台**: $TARGET
+          - **目标设备**: ${PROFILE:-Default}
+          - **代理插件模式**: $PROXY_MODE
 
           ### 提交信息
           - **作者**: ${{ env.COMMIT_AUTHOR }}
@@ -219,7 +232,7 @@ EOF
         if: env.compile_status == 'success' && !cancelled()
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: immortalwrt-${{ github.event.inputs.branch }}-${{ github.event.inputs.target }}-$(date +%Y%m%d%H%M)
+          tag_name: immortalwrt-$BRANCH-$TARGET-$(date +%Y%m%d%H%M)
           body_path: INFO.md
           files: artifacts/*
           draft: false
