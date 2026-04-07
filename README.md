@@ -1,6 +1,6 @@
 # ImmortalWrt NanoPi R2S 编译项目
 
-本项目用于通过 GitHub Actions 自动编译 ImmortalWrt 固件并集成代理插件（luci-app-ssr-plus）。
+本项目用于通过 GitHub Actions 自动编译 ImmortalWrt 固件并集成插件。
 
 ## 使用方法
 
@@ -66,37 +66,11 @@
 - 根文件系统：**512MB**
 - 原因：确保安装软件后有足够的可用空间
 
-✅ **SSRP 插件集成**
-- 完整集成 luci-app-ssr-plus
+✅ **SSP 插件集成**
+- 完整集成 SSP
 - 支持所有主流代理协议
 
 ### R2S 端口说明
-
-NanoPi R2S 有两个千兆网口，**原始默认**对应关系：
-
-```
-┌──────────────────────────────┐
-│  ○ USB 3.0    ○ USB 2.0     │
-│                              │
-│   [eth1/LAN]    [eth0/WAN]   │
-│   (靠近 USB)    (靠近 GPIO)  │
-│                              │
-│   ↑ 原始默认配置              │
-└──────────────────────────────┘
-```
-
-**本固件已对调 LAN/WAN**，实际连接方式：
-
-```
-┌──────────────────────────────┐
-│  ○ USB 3.0    ○ USB 2.0     │
-│                              │
-│   [eth0/LAN]    [eth1/WAN]   │
-│   (靠近 USB)    (靠近 GPIO)  │
-│      ↓             ↓         │
-│   连接电脑     连接上级路由   │
-└──────────────────────────────┘
-```
 
 **连接方式（本固件）**：
 - **WAN 口**（eth1，靠近 GPIO 针脚）→ 连接上级路由器/光猫
@@ -109,7 +83,7 @@ NanoPi R2S 有两个千兆网口，**原始默认**对应关系：
 - **Branch**: `openwrt-24.10`（推荐稳定版）
 - **Target**: `aarch64_generic`
 - **Profile**: 留空（自动识别 R2S）
-- **SSRP Mode**: `full`
+- **SSP Mode**: `full`
 
 ## 支持的平台
 
@@ -130,30 +104,6 @@ NanoPi R2S 有两个千兆网口，**原始默认**对应关系：
 | ipq40xx_generic | IPQ40xx 设备 |
 | ipq806x_generic | IPQ806x 设备 |
 
-## 已集成的功能
-
-### SSRP 插件组件
-
-- ✅ Shadowsocks Libev 客户端/服务器
-- ✅ ShadowsocksR Libev 客户端/服务器
-- ✅ Xray
-- ✅ Trojan
-- ✅ Hysteria
-- ✅ NaiveProxy
-- ✅ Kcptun
-- ✅ Simple-obfs
-- ✅ v2ray-plugin
-- ✅ Shadow-TLS
-- ✅ Sing-Box
-- ✅ 中文界面
-
-### 系统组件
-
-- ✅ LuCI Web 界面
-- ✅ Argon 主题
-- ✅ 常用系统工具
-- ✅ 网络工具
-- ✅ SSL 库
 
 ## 自定义配置
 
