@@ -146,26 +146,25 @@ jobs:
           fi
 
           # Enable SSRP packages
-          cat >> openwrt/.config << 'EOF'
-
-# SSRP Configuration
-CONFIG_PACKAGE_luci-app-ssr-plus=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Chinese=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Client=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Server=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Client=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Server=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Simple_obfs=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Hysteria=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Trojan=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_NaiveProxy=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Kcptun=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadow_TLS=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_SingBox=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_V2ray_Plugin=y
-CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y
-EOF
+          {
+            echo ""
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Chinese=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Client=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_Libev_Server=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Client=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Server=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Simple_obfs=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Hysteria=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Trojan=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_NaiveProxy=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Kcptun=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadow_TLS=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_SingBox=y"
+            echo "CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_V2ray_Plugin=y"
+            echo "CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y"
+          } >> openwrt/.config
 
       - name: Apply NanoPi R2S customizations
         run: |
