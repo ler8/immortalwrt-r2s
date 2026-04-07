@@ -1,0 +1,22 @@
+# Build artifacts
+bin/
+build_dir/
+dl/
+staging_dir/
+toolchain/
+tmp/
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
