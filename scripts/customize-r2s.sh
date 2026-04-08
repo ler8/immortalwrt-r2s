@@ -91,7 +91,7 @@ cat > "$OPENWRT_DIR/target/linux/rockchip/armv8/NANOPI_R2S_CUSTOM.md" << 'EOF'
 #### 3.1 DHCP 服务器下发的 DNS（给客户端）
 - **配置位置**: `/etc/config/dhcp` → `config dhcp 'lan'` → `list dns`
 - **作用**: 告诉通过 DHCP 连接到 R2S 的设备（电脑、手机等）使用哪个 DNS
-- **配置值**: 
+- **配置值**:
   - 223.5.5.5（阿里 DNS）
   - 114.114.114.114（114 DNS）
 

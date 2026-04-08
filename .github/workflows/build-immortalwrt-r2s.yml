@@ -155,6 +155,11 @@ jobs:
             echo "CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y"
           } >> openwrt/.config
 
+      - name: Normalize repository scripts
+        run: |
+          echo ">> 标准化仓库 shell 脚本行尾..."
+          find main -type f -name "*.sh" -print0 | xargs -0 sed -i 's/\r$//'
+
       - name: Apply NanoPi R2S customizations
         run: |
           echo ">> 应用 NanoPi R2S LAN/WAN 对调和 IP 修改..."
