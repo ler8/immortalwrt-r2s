@@ -13,13 +13,10 @@
 在你的 Fork 仓库中：
 
 1. 点击 **Actions** 标签
-2. 选择 **Build ImmortalWrt with SSRP** 工作流
+2. 选择 **Build ImmortalWrt for R2S** 工作流
 3. 点击 **Run workflow**
 4. 选择以下参数：
    - **ImmortalWrt 分支**: openwrt-24.10 / openwrt-23.05 / master
-   - **目标平台**: 选择你的设备架构（如 x86_64, aarch64_generic 等）
-   - **目标设备** (可选): 特定设备型号，留空使用默认配置
-   - **代理插件模式**: full (完整版) / lite (精简版)
 5. 点击 **Run workflow** 开始编译
 
 ### 3. 下载固件
@@ -66,8 +63,8 @@
 - 根文件系统：**512MB**
 - 原因：确保安装软件后有足够的可用空间
 
-✅ **SSP 插件集成**
-- 完整集成 SSP
+✅ **SSRP 插件集成**
+- 完整集成 luci-app-ssr-plus
 - 支持所有主流代理协议
 
 ### R2S 端口说明
@@ -82,8 +79,8 @@
 选择参数：
 - **Branch**: `openwrt-24.10`（推荐稳定版）
 - **Target**: `aarch64_generic`
-- **Profile**: 留空（自动识别 R2S）
-- **SSP Mode**: `full`
+- 固件固定为 **NanoPi R2S**
+- 固件固定集成 **luci-app-ssr-plus**
 
 ## 支持的平台
 
@@ -118,21 +115,7 @@ CONFIG_PACKAGE_<package-name>=y
 
 ### 修改 feeds 源
 
-编辑 `.github/workflows/build-immortalwrt-ssrp.yml` 中的 `Load custom feeds` 步骤，添加更多第三方插件源。
-
-### 添加更多插件
-
-在 `feeds.conf.custom` 中添加新的插件源：
-
-```
-src-git <feeds-name> https://github.com/<user>/<repo>.git
-```
-
-然后在配置文件中启用对应的包：
-
-```
-CONFIG_PACKAGE_<package-name>=y
-```
+编辑 `.github/workflows/build-immortalwrt-r2s.yml` 中的 `Load custom feeds` 步骤，添加更多第三方插件源。
 
 ## 编译失败排查
 

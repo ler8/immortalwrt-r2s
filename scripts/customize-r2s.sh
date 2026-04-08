@@ -5,7 +5,7 @@
 #   1. LAN/WAN 口对调（原始：WAN=eth0, LAN=eth1 → 对调后：WAN=eth1, LAN=eth0）
 #   2. 默认 IP 改为 192.168.2.1
 #   3. DHCP 服务器下发 DNS 为 223.5.5.5 和 114.114.114.114（给客户端）
-#   4. dnsmasq 上游 DNS 配置为 223.5.5.5 和 114.114.114.114（路由器自身使用）
+#   4. dnsmasq 上游 DNS 保持默认（避免影响 SSRP DNS 分流）
 #   5. 固件空间调整为 512MB
 # =========================================================================
 
@@ -22,170 +22,34 @@ echo "========================================="
 echo "应用 NanoPi R2S 自定义配置"
 echo "========================================="
 
-# 1. 修改默认网络配置 - LAN/WAN 对调
-NETWORK_CONFIG="$OPENWRT_DIR/target/linux/rockchip/armv8/base-files/etc/board.d/02_network"
-if [ -f "$NETWORK_CONFIG" ]; then
-    echo ">> 修改网络接口配置（LAN/WAN 对调）..."
-    
-    # 备份原文件
-    cp "$NETWORK_CONFIG" "$NETWORK_CONFIG.bak"
-    
-    # 原始配置（R2S 默认）：
-    # nanopi-r2s)
-    #     ucidef_set_interfaces_lan_wan 'eth1' 'eth0'
-    #     ;;
-    # 
-    # 含义：LAN=eth1, WAN=eth0
-    #
-    # 对调后目标：
-    # LAN=eth0, WAN=eth1
-    
-    # 查找并注释掉原有的 R2S 配置
-    sed -i '/friendlyarm,nanopi-r2s/,/;;/{
-        s/^/#/
-    }' "$NETWORK_CONFIG"
-    
-    # 添加自定义配置（LAN/WAN 对调）
-    cat >> "$NETWORK_CONFIG" << 'EOF'
+# 1. 通过 uci-defaults 在首次启动时稳定应用 R2S 定制
+echo ">> 创建首次启动自定义脚本（LAN/WAN 对调、IP、DHCP DNS）..."
+UCI_DEFAULTS_DIR="$OPENWRT_DIR/files/etc/uci-defaults"
+UCI_DEFAULTS_SCRIPT="$UCI_DEFAULTS_DIR/99-nanopi-r2s-custom"
+mkdir -p "$UCI_DEFAULTS_DIR"
 
-# Custom: LAN/WAN swapped for NanoPi R2S
-# Original: LAN=eth1, WAN=eth0
-# Swapped:  LAN=eth0, WAN=eth1
-friendlyarm,nanopi-r2s)
-    ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
-    ;;
+cat > "$UCI_DEFAULTS_SCRIPT" << 'EOF'
+#!/bin/sh
+. /lib/functions.sh
+
+if [ "$(board_name)" = "friendlyarm,nanopi-r2s" ]; then
+    uci -q batch <<'EOT'
+set network.lan.device='eth0'
+set network.wan.device='eth1'
+set network.lan.ipaddr='192.168.2.1'
+delete dhcp.lan.dhcp_option
+add_list dhcp.lan.dhcp_option='6,223.5.5.5,114.114.114.114'
+EOT
+
+    uci commit network
+    uci commit dhcp
+fi
+
+exit 0
 EOF
-    echo "   ✓ 网络接口配置已修改（LAN=eth0, WAN=eth1）"
-else
-    echo "   ⚠ 警告：未找到网络配置文件 $NETWORK_CONFIG"
-fi
 
-# 2. 修改默认 IP 地址
-DEFAULT_NETWORK="$OPENWRT_DIR/target/linux/rockchip/armv8/base-files/etc/config/network"
-if [ -f "$DEFAULT_NETWORK" ]; then
-    echo ">> 修改默认 IP 地址..."
-    
-    # 备份原文件
-    cp "$DEFAULT_NETWORK" "$DEFAULT_NETWORK.bak"
-    
-    # 将 192.168.1.1 改为 192.168.2.1
-    sed -i 's/192\.168\.1\.1/192.168.2.1/g' "$DEFAULT_NETWORK"
-    
-    echo "   ✓ 默认 IP 已改为 192.168.2.1"
-fi
-
-# 3. 配置 DHCP 服务器下发的 DNS（给局域网客户端）
-# 注意：这是 DHCP 服务器告诉客户端"你应该用哪个 DNS"
-# 重要：不要在 config dnsmasq 中设置 noresolv 和固定 server！
-# 原因：SSRP 插件需要 dnsmasq 读取系统 resolv.conf 来实现 DNS 分流功能
-#       如果设置 noresolv，会导致 SSRP 的 DNS 分流失效！
-DEFAULT_DHCP="$OPENWRT_DIR/target/linux/rockchip/armv8/base-files/etc/config/dhcp"
-if [ -f "$DEFAULT_DHCP" ]; then
-    echo ">> 配置 DHCP 下发的 DNS 服务器（给客户端）..."
-    
-    # 备份原文件
-    cp "$DEFAULT_DHCP" "$DEFAULT_DHCP.bak"
-    
-    # 在 config dhcp 'lan' 段中添加 DNS 选项
-    # 使用 dhcp_option 下发 DNS 给客户端（选项 6）
-    if grep -q "config dhcp 'lan'" "$DEFAULT_DHCP" || grep -q "config dhcp lan" "$DEFAULT_DHCP"; then
-        # 在 lan 段的末尾添加 DNS 配置
-        sed -i "/config dhcp 'lan'/,/^$/ {
-            /^$/i\\
-    # Custom DNS servers for DHCP clients (AliDNS + 114DNS)\\
-    list dns '223.5.5.5'\\
-    list dns '114.114.114.114'\\
-
-        }" "$DEFAULT_DHCP"
-        
-        # 检查是否成功添加，如果没有则用备用方案
-        if ! grep -q "223.5.5.5" "$DEFAULT_DHCP"; then
-            echo "   ⚠ sed 添加失败，使用备用方案..."
-            # 直接重建文件（注意：不修改 config dnsmasq 部分！）
-            cat > "$DEFAULT_DHCP" << 'EOFDHCP'
-config dnsmasq
-    option domainneeded '1'
-    option boguspriv '1'
-    option filterwin2k '0'
-    option localise_queries '1'
-    option rebind_protection '1'
-    option rebind_localhost '1'
-    option local '/lan/'
-    option domain 'lan'
-    option expandhosts '1'
-    option nonegcache '0'
-    option authoritative '1'
-    option readethers '1'
-    option leasefile '/tmp/dhcp.leases'
-    option resolvfile '/tmp/resolv.conf.d/resolv.conf.auto'
-    # 注意：不设置 noresolv 和 server，保持默认！
-    # SSRP 插件需要 dnsmasq 读取系统 resolv.conf 来实现 DNS 分流
-
-config dhcp 'lan'
-    option interface 'lan'
-    option start '100'
-    option limit '150'
-    option leasetime '12h'
-    # DNS servers to assign to DHCP clients (下发给客户端的 DNS)
-    list dns '223.5.5.5'
-    list dns '114.114.114.114'
-
-config dhcp 'wan'
-    option interface 'wan'
-    option ignore '1'
-EOFDHCP
-        fi
-        
-        echo "   ✓ DHCP DNS 已配置（下发给客户端：223.5.5.5, 114.114.114.114）"
-        echo "   ✓ dnsmasq 上游 DNS 保持默认（由 SSRP 管理，不影响 DNS 分流）"
-    else
-        echo "   ⚠ 未找到 lan 配置段，使用备用方案..."
-        cat >> "$DEFAULT_DHCP" << 'EOFDHCP2'
-
-config dhcp 'lan'
-    option interface 'lan'
-    option start '100'
-    option limit '150'
-    option leasetime '12h'
-    list dns '223.5.5.5'
-    list dns '114.114.114.114'
-EOFDHCP2
-        echo "   ✓ DHCP DNS 已配置"
-    fi
-else
-    echo ">> 创建 DHCP 配置文件..."
-    mkdir -p "$(dirname "$DEFAULT_DHCP")"
-    cat > "$DEFAULT_DHCP" << 'EOFDHCP3'
-config dnsmasq
-    option domainneeded '1'
-    option boguspriv '1'
-    option filterwin2k '0'
-    option localise_queries '1'
-    option rebind_protection '1'
-    option rebind_localhost '1'
-    option local '/lan/'
-    option domain 'lan'
-    option expandhosts '1'
-    option nonegcache '0'
-    option authoritative '1'
-    option readethers '1'
-    option leasefile '/tmp/dhcp.leases'
-    option resolvfile '/tmp/resolv.conf.d/resolv.conf.auto'
-
-config dhcp 'lan'
-    option interface 'lan'
-    option start '100'
-    option limit '150'
-    option leasetime '12h'
-    list dns '223.5.5.5'
-    list dns '114.114.114.114'
-
-config dhcp 'wan'
-    option interface 'wan'
-    option ignore '1'
-EOFDHCP3
-    echo "   ✓ DHCP 配置文件已创建"
-fi
+chmod 0755 "$UCI_DEFAULTS_SCRIPT"
+echo "   ✓ 已创建 uci-defaults 脚本，首次启动后生效（LAN=eth0, WAN=eth1）"
 
 # 4. 调整固件根文件系统大小到 512MB
 echo ">> 配置固件空间..."
@@ -214,7 +78,8 @@ cat > "$OPENWRT_DIR/target/linux/rockchip/armv8/NANOPI_R2S_CUSTOM.md" << 'EOF'
 ### 1. LAN/WAN 口对调
 - **原始配置**: LAN=eth1 (USB网卡), WAN=eth0 (板载网卡)
 - **修改后**: LAN=eth0, WAN=eth1
-- **原因**: 用户需要根据实际使用场景对调网口功能
+- **实现方式**: 通过 `/etc/uci-defaults/99-nanopi-r2s-custom` 在首次启动时应用
+- **原因**: 避免直接修改上游 board.d 脚本带来的兼容性风险
 
 ### 2. 默认 IP 地址
 - **原始 IP**: 192.168.1.1
