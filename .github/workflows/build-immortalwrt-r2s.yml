@@ -103,6 +103,13 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Patch libffi build for current toolchain layout
+        working-directory: openwrt
+        run: |
+          echo ">> 修补 libffi fficonfig.h 路径匹配..."
+          sed -i 's|\$(PKG_BUILD_DIR)/\$(GNU_TARGET_NAME)\*/fficonfig.h|\$(firstword \$(wildcard \$(PKG_BUILD_DIR)/\$(GNU_TARGET_NAME)*/fficonfig.h \$(PKG_BUILD_DIR)/*/fficonfig.h \$(PKG_BUILD_DIR)/fficonfig.h))|' feeds/packages/libs/libffi/Makefile
+          grep -n "fficonfig.h" feeds/packages/libs/libffi/Makefile
+
       - name: Load custom configuration
         run: |
           # Copy custom configuration file
