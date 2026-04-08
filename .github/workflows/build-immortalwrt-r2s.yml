@@ -165,6 +165,17 @@ jobs:
             echo "CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y"
           } >> openwrt/.config
 
+      - name: Validate R2S target and SSRP packages
+        run: |
+          grep -q 'CONFIG_TARGET_BOARD="rockchip"' openwrt/.config
+          grep -q 'CONFIG_TARGET_SUBTARGET="armv8"' openwrt/.config
+          grep -q 'CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"' openwrt/.config
+          grep -q 'CONFIG_TARGET_ARCH_PACKAGES="aarch64_generic"' openwrt/.config
+          grep -q 'src-git helloworld https://github.com/fw876/helloworld.git' openwrt/feeds.conf.default
+          grep -q 'CONFIG_PACKAGE_luci-app-ssr-plus=y' openwrt/.config
+          grep -q 'CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y' openwrt/.config
+          grep -q 'CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y' openwrt/.config
+
       - name: Apply NanoPi R2S customizations
         run: |
           # 如果是 R2S 平台，应用自定义配置
