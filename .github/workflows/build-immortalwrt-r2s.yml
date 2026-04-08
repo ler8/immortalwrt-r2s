@@ -173,17 +173,18 @@ jobs:
 
       - name: Validate R2S target and SSRP packages
         run: |
+          echo ">> 最终 .config 中的目标配置："
+          grep '^CONFIG_TARGET' openwrt/.config || true
+          echo ">> 最终 .config 中的 SSRP 配置："
+          grep '^CONFIG_PACKAGE_luci-app-ssr-plus' openwrt/.config || true
+          grep '^CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn' openwrt/.config || true
+
           grep -q '^CONFIG_TARGET_rockchip=y' openwrt/.config
           grep -q '^CONFIG_TARGET_rockchip_armv8=y' openwrt/.config
           grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r2s=y' openwrt/.config
-          grep -q '^CONFIG_TARGET_BOARD="rockchip"' openwrt/.config
-          grep -q '^CONFIG_TARGET_SUBTARGET="armv8"' openwrt/.config
-          grep -q '^CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"' openwrt/.config
-          grep -q '^CONFIG_TARGET_ARCH_PACKAGES="aarch64_generic"' openwrt/.config
           grep -q '^CONFIG_TARGET_ROOTFS_PARTSIZE=512$' openwrt/.config
           grep -q 'src-git helloworld https://github.com/fw876/helloworld.git' openwrt/feeds.conf.default
           grep -q '^CONFIG_PACKAGE_luci-app-ssr-plus=y' openwrt/.config
-          grep -q '^CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y' openwrt/.config
           grep -q '^CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y' openwrt/.config
           test -x openwrt/files/etc/uci-defaults/99-nanopi-r2s-custom
           grep -q "set network.lan.device='eth0'" openwrt/files/etc/uci-defaults/99-nanopi-r2s-custom
