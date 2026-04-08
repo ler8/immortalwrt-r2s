@@ -136,12 +136,27 @@ jobs:
           if [ "$TARGET" = "aarch64_generic" ]; then
             echo ">> 应用 NanoPi R2S 专用配置..."
 
-            # 设置 R2S 为目标设备
-            sed -i 's|CONFIG_TARGET_PROFILE=""|CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"|g' openwrt/.config
-            sed -i 's|CONFIG_TARGET_BOARD="x86"|CONFIG_TARGET_BOARD="rockchip"|g' openwrt/.config
-            sed -i 's|CONFIG_TARGET_SUBTARGET="64"|CONFIG_TARGET_SUBTARGET="armv8"|g' openwrt/.config
-            sed -i 's|CONFIG_TARGET_ARCH_PACKAGES="x86_64"|CONFIG_TARGET_ARCH_PACKAGES="aarch64_generic"|g' openwrt/.config
-            sed -i 's|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe"|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -mcpu=cortex-a53"|g' openwrt/.config
+            # 强制切换到 NanoPi R2S 目标，避免 defconfig 回落到 x86_64
+            sed -i '/^CONFIG_TARGET_/d' openwrt/.config
+            cat >> openwrt/.config << 'EOF'
+            CONFIG_TARGET_rockchip=y
+            CONFIG_TARGET_rockchip_armv8=y
+            CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r2s=y
+            CONFIG_TARGET_BOARD="rockchip"
+            CONFIG_TARGET_SUBTARGET="armv8"
+            CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"
+            CONFIG_TARGET_ARCH_PACKAGES="aarch64_generic"
+            CONFIG_TARGET_ROOTFS_CPIOGZ=y
+            CONFIG_TARGET_ROOTFS_EXT4FS=y
+            CONFIG_TARGET_ROOTFS_SQUASHFS=y
+            CONFIG_TARGET_SQUASHFS_BLOCK_SIZE=256
+            CONFIG_TARGET_UBIFS_FREE_SPACE_FIXUP=y
+            CONFIG_TARGET_UBIFS_JOURNAL_SIZE=""
+            CONFIG_TARGET_IMAGES_GZIP=y
+            CONFIG_TARGET_ROOTFS_DIR=""
+            CONFIG_TARGET_ROOTFS_PARTSIZE=512
+            EOF
+            sed -i 's|CONFIG_DEFAULT_TARGET_OPTIMIZATION=".*"|CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -mcpu=cortex-a53"|g' openwrt/.config
           fi
 
           # Enable SSRP packages
@@ -167,6 +182,9 @@ jobs:
 
       - name: Validate R2S target and SSRP packages
         run: |
+          grep -q '^CONFIG_TARGET_rockchip=y' openwrt/.config
+          grep -q '^CONFIG_TARGET_rockchip_armv8=y' openwrt/.config
+          grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r2s=y' openwrt/.config
           grep -q 'CONFIG_TARGET_BOARD="rockchip"' openwrt/.config
           grep -q 'CONFIG_TARGET_SUBTARGET="armv8"' openwrt/.config
           grep -q 'CONFIG_TARGET_PROFILE="friendlyarm_nanopi-r2s"' openwrt/.config
